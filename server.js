@@ -2,12 +2,18 @@ const express = require("express");
 const app = express();
 const db = require("./db");
 const cookieSession = require("cookie-session");
+const bcrypt = require("./bcrypt");
 
 /////////////set up handlebars////////
 const { engine } = require("express-handlebars");
 app.engine("handlebars", engine());
 app.set("view engine", "handlebars");
 /////////////////////////////////////////
+app.use((req, res, next) => {
+    res.setHeader("x-frame-options", "deny");
+    next();
+});
+
 app.use(express.static("./public"));
 app.use(
     express.urlencoded({
@@ -40,7 +46,7 @@ app.get("/petition", (req, res) => {
 });
 
 app.post("/petition", (req, res) => {
-    db.insertUserInfo(req.body.first, req.body.last, req.body.sign)
+    db.insertUserInfo(req.body.sign, req.session.userID)
         .then((results) => {
             req.session.signatureID = results.rows[0].id;
             req.session.signed = true;
@@ -55,7 +61,7 @@ app.get("/thanks", (req, res) => {
     let imgUrl;
     db.getDataUrl(req.session.signatureID)
         .then((results) => {
-             imgUrl = results.rows[0].signature;
+            imgUrl = results.rows[0].signature;
         })
         .catch((err) => {
             res.send("<h1>picture is missing</h1>");
@@ -93,7 +99,48 @@ app.get("/signers", (req, res) => {
 });
 app.get("/logout", (req, res) => {
     req.session = null;
-    res.redirect("/petition");
+    res.redirect("/register");
+});
+
+app.get("/register", (req, res) => {
+    res.render("register");
+});
+
+app.post("/register", (req, res) => {
+    bcrypt
+        .hash(req.body.pwd)
+        .then((hash) => {
+            console.log("hashpwd", hash);
+            db.registerUser(
+                req.body.first,
+                req.body.last,
+                req.body.email,
+                hash
+            ).then((results) => {
+                console.log("results", results.rows);
+                req.session.userID = results.rows[0].id;
+            });
+        })
+        .catch((err) => console.log("err", err));
+});
+
+app.get("/login", (req, res) => {
+    res.render("login");
+});
+app.post("/login", (req, res) => {
+    db.findUser(req.body.email)
+        .then((results) => {
+            bcrypt
+                .compare(req.body.pwd, results.rows[0].passwd)
+                .then((match) => {
+                    if (!match) {
+                        res.send("<h1>Error</h1>");
+                    } else {
+                        req.session.userID = results.rows[0].id;
+                    }
+                });
+        })
+        .catch((err) => console.log("err", err));
 });
 
 app.listen(8080, () => {
