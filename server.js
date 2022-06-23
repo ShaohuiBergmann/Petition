@@ -20,9 +20,12 @@ app.use(
         extended: false,
     })
 );
+
+const COOKIE_SECRET =
+    process.env.COOKIE_SECRET || require("./secrets.json").COOKIE_SECRET;
 app.use(
     cookieSession({
-        secret: `I'm always angry.`,
+        secret: COOKIE_SECRET,
         maxAge: 1000 * 60 * 60 * 24 * 14,
         sameSite: true,
     })
@@ -48,11 +51,13 @@ app.get("/petition", (req, res) => {
 app.post("/petition", (req, res) => {
     db.insertUserInfo(req.body.sign, req.session.userID)
         .then((results) => {
+            console.log(results);
             req.session.signatureID = results.rows[0].id;
             req.session.signed = true;
             res.redirect("/thanks");
         })
         .catch((err) => {
+            console.log("posterr", err);
             res.send("<h1>OOOOps, something is wrong</h1>");
         });
 });
@@ -97,6 +102,12 @@ app.get("/signers", (req, res) => {
         })
         .catch((err) => console.log("error", err));
 });
+
+//-----------------------
+// app.get("/signers/:city", (req, res) => {
+//     const {city} = req.params
+// }) deploy to use sth effectively
+
 app.get("/logout", (req, res) => {
     req.session = null;
     res.redirect("/register");
@@ -119,6 +130,7 @@ app.post("/register", (req, res) => {
             ).then((results) => {
                 console.log("results", results.rows);
                 req.session.userID = results.rows[0].id;
+                res.redirect("/login");
             });
         })
         .catch((err) => console.log("err", err));
@@ -143,6 +155,6 @@ app.post("/login", (req, res) => {
         .catch((err) => console.log("err", err));
 });
 
-app.listen(8080, () => {
+app.listen(process.env.PORT || 8080, () => {
     console.log("got the petition");
 });

@@ -4,7 +4,7 @@
   CREATE TABLE signatures (
        id SERIAL PRIMARY KEY,
        signature VARCHAR NOT NULL CHECK (signature != ''),
-       user_id  INT NOT NULL
+       user_id  INT 
    );
    
 
@@ -17,3 +17,8 @@
        email VARCHAR NOT NULL UNIQUE CHECK (email != ''),
        passwd VARCHAR NOT NULL CHECK (passwd != '')
    );
+
+
+
+
+   

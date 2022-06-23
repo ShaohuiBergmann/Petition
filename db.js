@@ -5,7 +5,8 @@ const username = "postgres";
 const password = "postgres";
 
 const db = spicedPg(
-    `postgres:${username}:${password}@localhost:5432/${database}`
+    process.env.DATABASE_URL ||
+        `postgres:${username}:${password}@localhost:5432/${database}`
 );
 
 module.exports.insertUserInfo = (sign, userId) => {
@@ -43,3 +44,10 @@ module.exports.findUser = (email) => {
     const param = [email];
     return db.query(q, param);
 };
+
+
+//SELECT users.*, signature.id AS "signatureId"
+// FROM  users
+// JOIN signatures
+// On signatures.user_id = users.id
+//WHERE email = $1
