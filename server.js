@@ -6,6 +6,7 @@ const bcrypt = require("./bcrypt");
 
 /////////////set up handlebars////////
 const { engine } = require("express-handlebars");
+const { createTestScheduler } = require("jest");
 app.engine("handlebars", engine());
 app.set("view engine", "handlebars");
 /////////////////////////////////////////
@@ -104,9 +105,17 @@ app.get("/signers", (req, res) => {
 });
 
 //-----------------------
-// app.get("/signers/:city", (req, res) => {
-//     const {city} = req.params
-// }) deploy to use sth effectively
+app.get("/signers/:city", (req, res) => {
+    const { city } = req.params;
+    db.getSignerCities(city)
+        .then((results) => {
+            const signers = results.rows;
+            res.render("signers", {
+                signers,
+            });
+        })
+        .catch((err) => console.log("error", err));
+});
 
 app.get("/logout", (req, res) => {
     req.session = null;
@@ -130,10 +139,15 @@ app.post("/register", (req, res) => {
             ).then((results) => {
                 console.log("results", results.rows);
                 req.session.userID = results.rows[0].id;
-                res.redirect("/login");
+                res.redirect("/profile");
             });
         })
-        .catch((err) => console.log("err", err));
+        .catch((err) => {
+            console.log("err", err);
+            res.render("register", {
+                error: true
+            })
+        });
 });
 
 app.get("/login", (req, res) => {
@@ -154,6 +168,37 @@ app.post("/login", (req, res) => {
         })
         .catch((err) => console.log("err", err));
 });
+
+app.get("/profile", (req, res) => {
+    res.render("profile");
+});
+
+app.post("/profile", (req, res) => {
+    console.log(req.body);
+    if (req.body.age == "" && req.body.city == "" && req.body.url == "") {
+        res.redirect("/petition");
+    } else {
+        let url = req.body.url;
+        if (
+            !url.startsWith("https://") ||
+            !url.startsWith("http://") ||
+            !url.startsWith("//")
+        ) {
+            url = "";
+        }
+        db.insertProfile(req.body.age, req.body.city, url, req.session.userID)
+            .then((results) => {
+                res.redirect("/petition");
+            })
+            .catch((err) => {
+                console.log("error", err);
+            });
+    }
+});
+
+app.get("/edit", (req, res) => {
+    res.render("edit")
+})
 
 app.listen(process.env.PORT || 8080, () => {
     console.log("got the petition");

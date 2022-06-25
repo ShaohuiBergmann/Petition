@@ -1,13 +1,13 @@
-<h2>welcome to Page</h2>
 <form method="post">
-    <label >Enter your first name</label>
+    <label>Enter your first name</label>
     <input type="text" name="first" placeholder="First Name" />
-    <label >Enter your last name</label>
+    <label>Enter your last name</label>
     <input type="text" name="last" placeholder="last Name" />
-    <label >Enter your E-mail adress</label>
+    <label>Enter your E-mail adress</label>
     <input type="email" name="email" placeholder="E-mail Address" />
-    <label >Enter your password</label>
-    <input type="password" name="pwd" placeholder="password">
-    <input type="submit" name="submit" placeholder="Sign In">
+    <label>Enter your password</label>
+    <input type="password" name="pwd" placeholder="password" />
+    <button class="btn" name="submitProfile">Sign Up</button>
+    {{> error}}
     <p>If you're already registered, please <a href="/login">log in</a> </p>
 </form>

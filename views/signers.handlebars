@@ -1,7 +1,7 @@
 <h2>here are your fellow signers:</h2>
 <div>
     <ul>{{#signers}}
-        <li>{{first}} {{last}}</li>
+        <li>{{> name}}<span>{{age}}</span> <a href="/signers/{{city}}">{{city}}</a></li>
         {{/signers}}
     </ul>
 </div>

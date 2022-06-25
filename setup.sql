@@ -1,5 +1,6 @@
   DROP TABLE IF EXISTS signatures;
   DROP TABLE IF EXISTS users;
+  DROP TABLE IF EXISTS profiles;
 
   CREATE TABLE signatures (
        id SERIAL PRIMARY KEY,
@@ -17,6 +18,16 @@
        email VARCHAR NOT NULL UNIQUE CHECK (email != ''),
        passwd VARCHAR NOT NULL CHECK (passwd != '')
    );
+
+
+ CREATE TABLE profiles (
+       id SERIAL PRIMARY KEY,
+       age INT ,
+       city VARCHAR ,
+       url VARCHAR ,
+       user_id INT UNIQUE
+   );
+
 
 
 

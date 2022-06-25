@@ -18,7 +18,11 @@ module.exports.insertUserInfo = (sign, userId) => {
 };
 
 module.exports.getSigners = () => {
-    return db.query(`SELECT first, last FROM signatures`);
+    return db.query(` SELECT  users.first, users.last, profiles.age,profiles.city,profiles.url 
+FROM users
+LEFT OUTER JOIN profiles ON users.id = profiles.user_id
+JOIN signatures ON signatures.user_id = users.id;
+`);
 };
 
 module.exports.getDataUrl = (picId) => {
@@ -40,14 +44,27 @@ module.exports.registerUser = (first, last, email, passwd) => {
 };
 
 module.exports.findUser = (email) => {
-    const q = `SELECT * FROM users WHERE email = $1`;
+    const q = `SELECT * FROM users 
+    WHERE email = $1`;
     const param = [email];
     return db.query(q, param);
 };
 
+module.exports.insertProfile = (age, city, url, user_id) => {
+    const q = `INSERT INTO profiles (age, city, url, user_id)
+            VALUES ($1, $2, $3, $4)`;
+    const param = [age, city, url, user_id];
+    return db.query(q, param);
+};
 
-//SELECT users.*, signature.id AS "signatureId"
-// FROM  users
-// JOIN signatures
-// On signatures.user_id = users.id
-//WHERE email = $1
+module.exports.getSignerCities = (city) => {
+    return db.query(
+        ` SELECT  users.first, users.last, profiles.age,profiles.city,profiles.url 
+FROM users
+LEFT OUTER JOIN profiles ON users.id = profiles.user_id
+JOIN signatures ON signatures.user_id = users.id
+WHERE LOWER(city) = LOWER($1);
+`,
+        [city]
+    );
+};
