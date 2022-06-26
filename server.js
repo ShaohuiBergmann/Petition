@@ -145,8 +145,8 @@ app.post("/register", (req, res) => {
         .catch((err) => {
             console.log("err", err);
             res.render("register", {
-                error: true
-            })
+                error: true,
+            });
         });
 });
 
@@ -163,8 +163,20 @@ app.post("/login", (req, res) => {
                         res.send("<h1>Error</h1>");
                     } else {
                         req.session.userID = results.rows[0].id;
-                    }
-                });
+
+                        db.findUserSignatures(req.session.userID).then(
+                            (results) => {
+                                if (results.row[0]) {
+                                    req.session.signatureId =
+                                        results.rows[0].id;
+                                    res.redirect("/thanks");
+                                } else {
+                                    res.redirect("/petition");
+                                }
+                            }
+                        );
+                    } // outer if
+                }); //then
         })
         .catch((err) => console.log("err", err));
 });
@@ -197,8 +209,77 @@ app.post("/profile", (req, res) => {
 });
 
 app.get("/edit", (req, res) => {
-    res.render("edit")
-})
+    db.getProfileInfo(req.session.userID)
+        .then((results) => {
+            res.render("edit", {
+                results: results.rows,
+            });
+        })
+        .catch(error, console.log("edit profile error", error));
+});
+
+app.post("edit", (req, res) => {
+    if (req.body.pwd != "") {
+        bcrypt
+            .hash(req.body.pwd)
+            .then((hash) => {
+                db.updateUsersWithPwd(
+                    req.body.first,
+                    req.body.last,
+                    req.body.email,
+                    hash,
+                    req.session.userID
+                )
+                    .then(() => {
+                        db.updateProfiles(
+                            req.body.age,
+                            req.body.city,
+                            req.body.url,
+                            req.session.userID
+                        )
+                            .then(() => {
+                                res.redirect("/thanks");
+                            })
+                            .catch((err) => {
+                                console.log(
+                                    "error while updating profile ",
+                                    err
+                                );
+                            });
+                    })
+                    .catch((err) => {
+                        console.log("error while updating users with pwd", err);
+                    });
+            })
+            .catch((err) => {
+                console.log("error in hash", err);
+            });
+    } else {
+        db.updateUsersWithoutPwd(
+            req.body.first,
+            req.body.last,
+            req.body.email,
+            req.session.userID
+        )
+            .then(() => {
+                db.updateProfiles(
+                    req.body.age,
+                    req.body.city,
+                    req.body.url,
+                    req.session.userID
+                )
+                    .then(() => {
+                        res.redirect("/thanks");
+                    })
+                    .catch((err) => {
+                        console.log("error while updating profile ", err);
+                    });
+            })
+            .catch((err) => {
+                console.log("error while updating profile without pwd ", err);
+            });
+    }
+});
 
 app.listen(process.env.PORT || 8080, () => {
     console.log("got the petition");
