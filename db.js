@@ -45,14 +45,14 @@ module.exports.registerUser = (first, last, email, passwd) => {
 
 module.exports.findUser = (email) => {
     const q = `SELECT * FROM users 
-    WHERE email = $1`;
+    WHERE email = $1;`;
     const param = [email];
     return db.query(q, param);
 };
 
 module.exports.findUserSignatures = (userId) => {
     const q = `SELECT * FROM signatures 
-    WHERE user_id = $1`;
+    WHERE user_id = $1;`;
     const param = [userId];
     return db.query(q, param);
 };
@@ -65,51 +65,53 @@ module.exports.insertProfile = (age, city, url, user_id) => {
 };
 
 module.exports.getSignerCities = (city) => {
-    return db.query(
-        ` SELECT  users.first, users.last, profiles.age,profiles.city,profiles.url 
+    const q = `SELECT  users.first, users.last, profiles.age,profiles.city,profiles.url 
 FROM users
 LEFT OUTER JOIN profiles ON users.id = profiles.user_id
 JOIN signatures ON signatures.user_id = users.id
-WHERE LOWER(city) = LOWER($1);
-`,
-        [city]
-    );
+WHERE LOWER(city) = LOWER($1);`;
+    const param = [city];
+    return db.query(q, param);
 };
 
 module.exports.getProfileInfo = (userId) => {
-    const q = ` SELECT  users.first, users.last, users.email, profiles.age,profiles.city,profiles.url 
-FROM users
-LEFT OUTER JOIN profiles ON users.id = profiles.user_id
-WHERE users.id = $1
-   `;
-   const param = [userId];
-   db.query(q, param)
+    const q = ` SELECT users.first, users.last, users.email, profiles.age, profiles.city, profiles.url 
+                FROM users
+                LEFT OUTER JOIN profiles ON users.id = profiles.user_id
+                WHERE users.id = $1;`;
+    const param = [userId];
+    return db.query(q, param);
 };
-
 
 module.exports.updateUsersWithPwd = (first, last, email, password, id) => {
     const q = `UPDATE users
     SET first = $1, last = $2, email =  $3, passwd = $4 
     WHERE  id = $5`;
-     const param = [first, last, email, password, id];
-     db.query(q, param)
-    
+    const param = [first, last, email, password, id];
+    return db.query(q, param);
 };
 
 module.exports.updateProfiles = (age, city, url, userId) => {
-    const q = `UINSERT INTO profiles(age, city, url, user_id) 
+    const q = `INSERT INTO profiles(age, city, url, user_id) 
 VALUES($1, $2, $3, $4)
 ON CONFLICT (user_id)
 DO UPDATE SET age = $1, city = $2, url =  $3, user_id = $4 ;`;
     const param = [age, city, url, userId];
-    db.query(q, param);
+    return db.query(q, param);
 };
-
 
 module.exports.updateUsersWithoutPwd = (first, last, email, id) => {
     const q = `UPDATE users
-    SET first = $1, last = $2, email =  $3, 
+    SET first = $1, last = $2, email =  $3
     WHERE  id = $4`;
     const param = [first, last, email, id];
-    db.query(q, param);
+    return db.query(q, param);
+};
+
+module.exports.deleteSig = (signature) => {
+    return db.query(
+        `DELETE FROM signatures
+     WHERE signature = $1 ;`,
+        [signature]
+    );
 };

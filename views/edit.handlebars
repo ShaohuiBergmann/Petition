@@ -1,18 +1,21 @@
 <h2>Update Your Profile</h2>
 <form method="post">
-    <label>First Name</label>
-    <input type="text" name="first" value="{{first}}" />
-    <label>Last Name</label>
-    <input type="text" name="last" value="{{last}}"/>
-    <label>E-mail Adress</label>
-    <input type="email" name="email" value="{{email}}" />
-    <label>Password</label>
-    <input type="password" name="pwd" />
-    <label>Age</label>
-    <input type="number" name="age"  value="{{age}}"/>
-    <label>City</label>
-    <input type="text" name="city" value="{{city}}"/>
-    <label>Homepage</label>
-    <input type="url" name="url" value="{{url}}" />
-    <button class="btn" name="update">UPDATE</button>
+    {{#results}}
+        <label>First Name</label>
+        <input type="text" name="first" value="{{first}}" />
+        <label>Last Name</label>
+        <input type="text" name="last" value="{{last}}" />
+        <label>E-mail Adress</label>
+        <input type="email" name="email" value="{{email}}" />
+        <label>Password</label>
+        <input type="password" name="pwd" />
+        <label>Age</label>
+        <input type="number" name="age" value="{{age}}" />
+        <label>City</label>
+        <input type="text" name="city" value="{{city}}" />
+        <label>Homepage</label>
+        <input type="url" name="url" value="{{url}}" />
+        <button class="btn" name="update">UPDATE</button>
+    {{/results}}
+
 </form>

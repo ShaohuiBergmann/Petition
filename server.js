@@ -41,12 +41,22 @@ app.use((req, res, next) => {
     next();
 });
 
-app.get("/petition", (req, res) => {
-    if (req.session.signed != true) {
-        res.render("petition", {});
+app.use((req, res, next) => {
+    if (!req.session.userID && req.url != "/login" && req.url != "/register") {
+        res.redirect("/register");
     } else {
-        res.redirect("/thanks");
+        next();
     }
+});
+
+app.get("/petition", (req, res) => {
+    if (req.session.userID) {
+        if (req.session.signed != true) {
+            res.render("petition", {});
+        } else {
+            res.redirect("/thanks");
+        }
+    } else [res.redirect("/register")];
 });
 
 app.post("/petition", (req, res) => {
@@ -58,38 +68,39 @@ app.post("/petition", (req, res) => {
             res.redirect("/thanks");
         })
         .catch((err) => {
-            console.log("posterr", err);
+            console.log("post err", err);
             res.send("<h1>OOOOps, something is wrong</h1>");
         });
 });
 
 app.get("/thanks", (req, res) => {
     let imgUrl;
-    db.getDataUrl(req.session.signatureID)
+    db.getDataUrl(req.session.signatureId)
         .then((results) => {
+            console.log("results at thanks ", results.rows);
             imgUrl = results.rows[0].signature;
-        })
-        .catch((err) => {
-            res.send("<h1>picture is missing</h1>");
-        });
-
-    db.getTotalSigners()
-        .then((results) => {
-            console.log(results.rows);
-            req.session.totalSigners = results.rows[0].count;
-            if (req.session.signed) {
-                res.render("thanks", {
-                    signedData: {
-                        url: imgUrl,
-                        totalSig: req.session.totalSigners,
-                    },
+            db.getTotalSigners()
+                .then((results) => {
+                    console.log(results.rows);
+                    req.session.totalSigners = results.rows[0].count;
+                    if (req.session.signed) {
+                        res.render("thanks", {
+                            signedData: {
+                                url: imgUrl,
+                                totalSig: req.session.totalSigners,
+                            },
+                        });
+                    } else {
+                        res.redirect("/petition");
+                    }
+                })
+                .catch((err) => {
+                    console.log("error", err);
                 });
-            } else {
-                res.redirect("/petition");
-            }
         })
         .catch((err) => {
-            console.log("error", err);
+            console.log("thanks err", err);
+            res.send("<h1>picture is missing</h1>");
         });
 });
 
@@ -106,9 +117,10 @@ app.get("/signers", (req, res) => {
 
 //-----------------------
 app.get("/signers/:city", (req, res) => {
-    const { city } = req.params;
+    const city = req.params.city;
     db.getSignerCities(city)
         .then((results) => {
+            console.log("results for cities", results.rows);
             const signers = results.rows;
             res.render("signers", {
                 signers,
@@ -156,6 +168,7 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
     db.findUser(req.body.email)
         .then((results) => {
+            console.log("results at login", results.rows);
             bcrypt
                 .compare(req.body.pwd, results.rows[0].passwd)
                 .then((match) => {
@@ -166,9 +179,14 @@ app.post("/login", (req, res) => {
 
                         db.findUserSignatures(req.session.userID).then(
                             (results) => {
-                                if (results.row[0]) {
+                                console.log(
+                                    "results at find sig",
+                                    results.rows
+                                );
+                                if (results.rows[0]) {
                                     req.session.signatureId =
                                         results.rows[0].id;
+                                    req.session.signed = true;
                                     res.redirect("/thanks");
                                 } else {
                                     res.redirect("/petition");
@@ -178,7 +196,12 @@ app.post("/login", (req, res) => {
                     } // outer if
                 }); //then
         })
-        .catch((err) => console.log("err", err));
+        .catch((err) => {
+            console.log("err in login", err);
+            res.render("login", {
+                error: true,
+            });
+        });
 });
 
 app.get("/profile", (req, res) => {
@@ -211,14 +234,15 @@ app.post("/profile", (req, res) => {
 app.get("/edit", (req, res) => {
     db.getProfileInfo(req.session.userID)
         .then((results) => {
+            console.log(results.rows);
             res.render("edit", {
                 results: results.rows,
             });
         })
-        .catch(error, console.log("edit profile error", error));
+        .catch((error) => console.log("edit profile error", error));
 });
 
-app.post("edit", (req, res) => {
+app.post("/edit", (req, res) => {
     if (req.body.pwd != "") {
         bcrypt
             .hash(req.body.pwd)
@@ -281,6 +305,16 @@ app.post("edit", (req, res) => {
     }
 });
 
+app.post("/thanks", (req, res) => {
+    db.deleteSig(req.session.signatureId)
+        .then(() => {
+            req.session.signatureId = null;
+            res.redirect("/petition");
+        })
+        .catch((err) => {
+            console.log("error in deleteSig", err);
+        });
+});
 app.listen(process.env.PORT || 8080, () => {
     console.log("got the petition");
 });
