@@ -81,7 +81,7 @@ app.post("/petition", (req, res) => {
                 res.redirect("/thanks");
             })
             .catch((err) => {
-                console.log("post err", err);
+                res.render()
                 res.send("<h1>OOOOps, something is wrong</h1>");
             });
     } else {
