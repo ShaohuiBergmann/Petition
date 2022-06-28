@@ -166,7 +166,11 @@ app.get("/logout", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-    res.render("register");
+    if (req.session.userID) {
+        res.redirect("/petition");
+    } else {
+        res.render("register");
+    }
 });
 
 app.post("/register", (req, res) => {
@@ -194,7 +198,11 @@ app.post("/register", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
-    res.render("login");
+    if (req.session.userID) {
+        res.redirect("/petition");
+    } else {
+        res.render("login");
+    }
 });
 app.post("/login", (req, res) => {
     db.findUser(req.body.email)
@@ -353,6 +361,10 @@ app.post("/edit", (req, res) => {
     } else {
         res.sendStatus(403);
     }
+});
+
+app.get("/", (req, res) => {
+    res.redirect("/register");
 });
 
 app.listen(process.env.PORT || 8080, () => {
