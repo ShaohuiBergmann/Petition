@@ -81,7 +81,7 @@ app.post("/petition", (req, res) => {
                 res.redirect("/thanks");
             })
             .catch((err) => {
-                res.render()
+                res.render();
                 res.send("<h1>OOOOps, something is wrong</h1>");
             });
     } else {
@@ -359,3 +359,4 @@ app.post("/edit", (req, res) => {
 app.listen(process.env.PORT || 8080, () => {
     console.log("got the petition");
 });
+//
