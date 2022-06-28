@@ -10,6 +10,16 @@ const { createTestScheduler } = require("jest");
 app.engine("handlebars", engine());
 app.set("view engine", "handlebars");
 /////////////////////////////////////////
+
+if (process.env.NODE_ENV == "production") {
+    app.use((req, res, next) => {
+        if (req.headers["x-forwarded-proto"].startsWith("https")) {
+            return next();
+        }
+        res.redirect(`https://${req.hostname}${req.url}`);
+    });
+}
+
 app.use((req, res, next) => {
     res.setHeader("x-frame-options", "deny");
     next();
@@ -56,52 +66,74 @@ app.get("/petition", (req, res) => {
         } else {
             res.redirect("/thanks");
         }
-    } else [res.redirect("/register")];
+    } else {
+        res.redirect("/register");
+    }
 });
 
 app.post("/petition", (req, res) => {
-    db.insertUserInfo(req.body.sign, req.session.userID)
-        .then((results) => {
-            console.log(results);
-            req.session.signatureID = results.rows[0].id;
-            req.session.signed = true;
-            res.redirect("/thanks");
-        })
-        .catch((err) => {
-            console.log("post err", err);
-            res.send("<h1>OOOOps, something is wrong</h1>");
-        });
+    if (req.session.userID) {
+        db.insertUserInfo(req.body.sign, req.session.userID)
+            .then((results) => {
+                console.log(results);
+                req.session.signatureId = results.rows[0].id;
+                req.session.signed = true;
+                res.redirect("/thanks");
+            })
+            .catch((err) => {
+                console.log("post err", err);
+                res.send("<h1>OOOOps, something is wrong</h1>");
+            });
+    } else {
+        res.sendStatus(403);
+    }
 });
 
 app.get("/thanks", (req, res) => {
-    let imgUrl;
-    db.getDataUrl(req.session.signatureId)
-        .then((results) => {
-            console.log("results at thanks ", results.rows);
-            imgUrl = results.rows[0].signature;
-            db.getTotalSigners()
-                .then((results) => {
-                    console.log(results.rows);
-                    req.session.totalSigners = results.rows[0].count;
-                    if (req.session.signed) {
+    if (req.session.signed == true) {
+        let imgUrl;
+        db.getDataUrl(req.session.signatureId)
+            .then((results) => {
+                console.log("results at thanks ", results.rows);
+                imgUrl = results.rows[0].signature;
+                db.getTotalSigners()
+                    .then((results) => {
+                        console.log(results.rows);
+                        req.session.totalSigners = results.rows[0].count;
                         res.render("thanks", {
                             signedData: {
                                 url: imgUrl,
                                 totalSig: req.session.totalSigners,
                             },
                         });
-                    } else {
-                        res.redirect("/petition");
-                    }
-                })
-                .catch((err) => {
-                    console.log("error", err);
-                });
-        })
-        .catch((err) => {
-            console.log("thanks err", err);
-            res.send("<h1>picture is missing</h1>");
-        });
+                    })
+                    .catch((err) => {
+                        console.log("error", err);
+                    });
+            })
+            .catch((err) => {
+                console.log("thanks err", err);
+                res.send("<h1>picture is missing</h1>");
+            });
+    } else {
+        res.redirect("/petition");
+    }
+});
+
+app.post("/thanks", (req, res) => {
+    if (req.session.userID) {
+        db.deleteSig(req.session.signatureId)
+            .then(() => {
+                req.session.signatureId = null;
+                req.session.signed = null;
+                res.redirect("/petition");
+            })
+            .catch((err) => {
+                console.log("error in deleteSig", err);
+            });
+    } else {
+        res.sendStatus(403);
+    }
 });
 
 app.get("/signers", (req, res) => {
@@ -209,25 +241,34 @@ app.get("/profile", (req, res) => {
 });
 
 app.post("/profile", (req, res) => {
-    console.log(req.body);
-    if (req.body.age == "" && req.body.city == "" && req.body.url == "") {
-        res.redirect("/petition");
-    } else {
-        let url = req.body.url;
-        if (
-            !url.startsWith("https://") ||
-            !url.startsWith("http://") ||
-            !url.startsWith("//")
-        ) {
-            url = "";
+    if (req.session.userID) {
+        console.log(req.body);
+        if (req.body.age == "" && req.body.city == "" && req.body.url == "") {
+            res.redirect("/petition");
+        } else {
+            let url = req.body.url;
+            if (
+                !url.startsWith("https://") ||
+                !url.startsWith("http://") ||
+                !url.startsWith("//")
+            ) {
+                url = "";
+            }
+            db.insertProfile(
+                req.body.age,
+                req.body.city,
+                url,
+                req.session.userID
+            )
+                .then((results) => {
+                    res.redirect("/petition");
+                })
+                .catch((err) => {
+                    console.log("error", err);
+                });
         }
-        db.insertProfile(req.body.age, req.body.city, url, req.session.userID)
-            .then((results) => {
-                res.redirect("/petition");
-            })
-            .catch((err) => {
-                console.log("error", err);
-            });
+    } else {
+        res.sendStatus(403);
     }
 });
 
@@ -243,78 +284,78 @@ app.get("/edit", (req, res) => {
 });
 
 app.post("/edit", (req, res) => {
-    if (req.body.pwd != "") {
-        bcrypt
-            .hash(req.body.pwd)
-            .then((hash) => {
-                db.updateUsersWithPwd(
-                    req.body.first,
-                    req.body.last,
-                    req.body.email,
-                    hash,
-                    req.session.userID
-                )
-                    .then(() => {
-                        db.updateProfiles(
-                            req.body.age,
-                            req.body.city,
-                            req.body.url,
-                            req.session.userID
-                        )
-                            .then(() => {
-                                res.redirect("/thanks");
-                            })
-                            .catch((err) => {
-                                console.log(
-                                    "error while updating profile ",
-                                    err
-                                );
-                            });
-                    })
-                    .catch((err) => {
-                        console.log("error while updating users with pwd", err);
-                    });
-            })
-            .catch((err) => {
-                console.log("error in hash", err);
-            });
+    if (req.session.userID) {
+        if (req.body.pwd != "") {
+            bcrypt
+                .hash(req.body.pwd)
+                .then((hash) => {
+                    db.updateUsersWithPwd(
+                        req.body.first,
+                        req.body.last,
+                        req.body.email,
+                        hash,
+                        req.session.userID
+                    )
+                        .then(() => {
+                            db.updateProfiles(
+                                req.body.age,
+                                req.body.city,
+                                req.body.url,
+                                req.session.userID
+                            )
+                                .then(() => {
+                                    res.redirect("/thanks");
+                                })
+                                .catch((err) => {
+                                    console.log(
+                                        "error while updating profile ",
+                                        err
+                                    );
+                                });
+                        })
+                        .catch((err) => {
+                            console.log(
+                                "error while updating users with pwd",
+                                err
+                            );
+                        });
+                })
+                .catch((err) => {
+                    console.log("error in hash", err);
+                });
+        } else {
+            db.updateUsersWithoutPwd(
+                req.body.first,
+                req.body.last,
+                req.body.email,
+                req.session.userID
+            )
+                .then(() => {
+                    db.updateProfiles(
+                        req.body.age,
+                        req.body.city,
+                        req.body.url,
+                        req.session.userID
+                    )
+                        .then(() => {
+                            res.redirect("/thanks");
+                        })
+                        .catch((err) => {
+                            console.log("error while updating profile ", err);
+                        });
+                })
+                .catch((err) => {
+                    console.log(
+                        "error while updating profile without pwd ",
+                        err
+                    );
+                });
+        }
     } else {
-        db.updateUsersWithoutPwd(
-            req.body.first,
-            req.body.last,
-            req.body.email,
-            req.session.userID
-        )
-            .then(() => {
-                db.updateProfiles(
-                    req.body.age,
-                    req.body.city,
-                    req.body.url,
-                    req.session.userID
-                )
-                    .then(() => {
-                        res.redirect("/thanks");
-                    })
-                    .catch((err) => {
-                        console.log("error while updating profile ", err);
-                    });
-            })
-            .catch((err) => {
-                console.log("error while updating profile without pwd ", err);
-            });
+        res.sendStatus(403);
     }
 });
 
-app.post("/thanks", (req, res) => {
-    db.deleteSig(req.session.signatureId)
-        .then(() => {
-            req.session.signatureId = null;
-            res.redirect("/petition");
-        })
-        .catch((err) => {
-            console.log("error in deleteSig", err);
-        });
-});
 app.listen(process.env.PORT || 8080, () => {
     console.log("got the petition");
 });

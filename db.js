@@ -108,10 +108,10 @@ module.exports.updateUsersWithoutPwd = (first, last, email, id) => {
     return db.query(q, param);
 };
 
-module.exports.deleteSig = (signature) => {
+module.exports.deleteSig = (userId) => {
     return db.query(
         `DELETE FROM signatures
-     WHERE signature = $1 ;`,
-        [signature]
+     WHERE id = $1;`,
+        [userId]
     );
 };
